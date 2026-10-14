@@ -19,7 +19,7 @@
   var fromHome = /[?&]home=1/.test(location.search)
     || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)
     || window.navigator.standalone === true;
-  if (fromHome) location.replace(APP_URL);
+  if (fromHome) document.documentElement.className = 'embed';
 </script>
 <style>
   *{box-sizing:border-box}
@@ -39,6 +39,12 @@
   .ext p b{color:#FF5FA2}
   .ext .btn{background:#4A2A4A;color:#fff}
   .ext .btn + .btn{margin-top:8px;background:#fff;color:#4A2A4A;border:2px solid #E5D3E2}
+  .frame{position:fixed;inset:0;width:100%;height:100%;border:0;display:block;background:#FFF0F6;z-index:1}
+  .loading{position:fixed;inset:0;z-index:2;display:none;place-items:center;text-align:center;background:linear-gradient(160deg,#FFE3EF,#F3E3FF 55%,#E3E8FF)}
+  .loading img{width:96px;height:96px;border-radius:24px;box-shadow:0 8px 24px rgba(200,80,140,.25)}
+  .loading p{margin:14px 0 0;font-size:15px;color:#8A6A86}
+  .embed main{display:none}
+  .embed .loading{display:grid}
   .card{margin-top:26px;background:rgba(255,255,255,.8);border-radius:20px;padding:18px 18px 8px;text-align:left;font-size:14.5px;line-height:1.6}
   .card b{color:#FF5FA2}
   .card h2{font-size:15px;margin:0 0 8px}
@@ -46,6 +52,7 @@
 </style>
 </head>
 <body>
+<div class="loading" id="loading"><div><img src="스터디랩_홈화면런처/icon-192.png" alt=""><p>스터디 랩을 여는 중이에요…</p></div></div>
 <main>
   <img class="icon" src="스터디랩_홈화면런처/icon-192.png" alt="">
   <h1>송현여고 스터디 랩</h1>
@@ -74,6 +81,21 @@
 </main>
 <script>
   document.getElementById('go').href = APP_URL;
+
+  /* ── 앱을 이 페이지 안에 띄우기 (구글 안내 띠가 보이지 않음). 막히면 앱 주소로 바로 이동 ── */
+  function openEmbedded(){
+    document.documentElement.className = 'embed';
+    var ok = false, f = document.createElement('iframe');
+    f.className = 'frame'; f.src = APP_URL; f.title = '송현여고 스터디 랩';
+    f.allow = 'clipboard-write; web-share; fullscreen; autoplay; screen-wake-lock';
+    window.addEventListener('message', function(e){
+      if (e.data && e.data.studylab === 'ready' && !ok) { ok = true; document.getElementById('loading').style.display = 'none'; }
+    });
+    document.body.appendChild(f);
+    setTimeout(function(){ if (!ok) location.replace(APP_URL); }, 9000);
+  }
+  document.getElementById('go').addEventListener('click', function(e){ e.preventDefault(); openEmbedded(); });
+  if (fromHome) openEmbedded();
 
   /* ── 크롬·사파리로 열기 ── */
   (function(){
