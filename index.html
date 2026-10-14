@@ -45,6 +45,21 @@
   .loading p{margin:14px 0 0;font-size:15px;color:#8A6A86}
   .embed main{display:none}
   .embed .loading{display:grid}
+  .iosg{position:fixed;inset:0;z-index:5;background:rgba(40,20,40,.55);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:16px 16px 70px}
+  .iosg[hidden]{display:none}
+  .iosg-card{width:100%;max-width:400px;background:#fff;border-radius:24px;padding:20px 18px 16px;text-align:left;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .iosg-card h2{margin:0 0 14px;font-size:18px;text-align:center}
+  .iosg-step{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+  .iosg-step span{flex:none;width:28px;height:28px;border-radius:50%;background:#FF5FA2;color:#fff;font-weight:800;display:grid;place-items:center;font-size:15px}
+  .iosg-step p{margin:3px 0 0;font-size:15px;line-height:1.55}
+  .iosg-step b{color:#FF5FA2}
+  .iosg-step small{display:block;color:#8A6A86;font-size:13px;margin-top:2px}
+  .iosg-step svg{width:20px;height:20px;vertical-align:-4px;color:#2F7BF6}
+  .iosg-arrow{font-size:40px;color:#fff;margin-top:10px;animation:bob 1.1s ease-in-out infinite;text-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .iosg.ipad{justify-content:flex-start;padding:70px 16px 16px}
+  .iosg.ipad .iosg-arrow{order:-1;align-self:flex-end;transform:rotate(180deg);margin:0 12px 8px 0;animation:none}
+  @keyframes bob{50%{transform:translateY(10px)}}
+  @media (prefers-reduced-motion:reduce){.iosg-arrow{animation:none}}
   .card{margin-top:26px;background:rgba(255,255,255,.8);border-radius:20px;padding:18px 18px 8px;text-align:left;font-size:14.5px;line-height:1.6}
   .card b{color:#FF5FA2}
   .card h2{font-size:15px;margin:0 0 8px}
@@ -53,6 +68,16 @@
 </head>
 <body>
 <div class="loading" id="loading"><div><img src="스터디랩_홈화면런처/icon-192.png" alt=""><p>스터디 랩을 여는 중이에요…</p></div></div>
+<div class="iosg" id="iosGuide" hidden role="dialog" aria-label="홈 화면에 추가하는 방법">
+  <div class="iosg-card">
+    <h2>아이폰 홈 화면에 추가하기</h2>
+    <div class="iosg-step"><span>1</span><p>사파리 <b>아래쪽 가운데</b>의 <b>공유 버튼</b> <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10H6.5A1.5 1.5 0 0 0 5 11.5v8A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-8a1.5 1.5 0 0 0-1.5-1.5H16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> 을 눌러요.<small>공유 버튼이 안 보이면 주소창 옆 <b>···</b> 를 먼저 눌러요.</small></p></div>
+    <div class="iosg-step"><span>2</span><p>메뉴를 위로 올려 <b>홈 화면에 추가</b> <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> 를 눌러요.</p></div>
+    <div class="iosg-step"><span>3</span><p>오른쪽 위 <b>추가</b>를 누르면 끝! 홈 화면에 핑크 STUDY LAB 아이콘이 생겨요.</p></div>
+    <button class="btn go" id="iosClose" style="margin-top:6px">알겠어요</button>
+  </div>
+  <div class="iosg-arrow" aria-hidden="true">⬇</div>
+</div>
 <main>
   <img class="icon" src="스터디랩_홈화면런처/icon-192.png" alt="">
   <h1>송현여고 스터디 랩</h1>
@@ -126,7 +151,23 @@
   if (/iPhone|iPad|iPod/.test(navigator.userAgent)) { document.getElementById('howA').hidden = true; document.getElementById('howI').hidden = false; }
   var deferred = null, add = document.getElementById('add');
   window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; add.hidden = false; });
-  add.addEventListener('click', function(){ if (!deferred) return; deferred.prompt(); deferred.userChoice.finally(function(){ deferred = null; add.hidden = true; }); });
+  add.addEventListener('click', function(){
+    if (deferred) { deferred.prompt(); deferred.userChoice.finally(function(){ deferred = null; add.hidden = true; }); return; }
+    if (isIOSDevice) openIosGuide();
+  });
+  /* ── 아이폰: 사파리는 '홈 화면에 추가'를 직접 누를 수 없어서, 단계별 안내 화면을 띄움 ── */
+  var isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isIPad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var iosSafari = isIOSDevice && /Safari\//.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|Whale|NAVER|KAKAOTALK|Instagram|FBAN|Line\//i.test(navigator.userAgent);
+  var standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  if (iosSafari && !standalone) { add.hidden = false; }
+  function openIosGuide(){
+    var g = document.getElementById('iosGuide'); g.hidden = false;
+    g.classList.toggle('ipad', isIPad);
+    if (isIPad) { var b = g.querySelector('.iosg-step b'); if (b) b.textContent = '오른쪽 위'; }
+  }
+  document.getElementById('iosClose').addEventListener('click', function(){ document.getElementById('iosGuide').hidden = true; });
+  document.getElementById('iosGuide').addEventListener('click', function(e){ if (e.target.id === 'iosGuide') e.currentTarget.hidden = true; });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('스터디랩_홈화면런처/sw.js', {scope: '스터디랩_홈화면런처/'}).catch(function(){});
 </script>
 </body>
