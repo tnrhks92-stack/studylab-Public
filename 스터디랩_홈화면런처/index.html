@@ -10,40 +10,62 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="스터디 랩">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FF8FB8">
+<script>
+  /* ▼ 웹앱 주소(/exec 로 끝나는 주소) ▼ */
+  var APP_URL = 'https://script.google.com/macros/s/AKfycby7Ir4X6zfTrlRDqdcWvwG1Z-0ZNLPhj0kf7uiWfgTnNoBZNU8DdWDhjmSBwrx0aoD2/exec';
+  /* 홈 화면 아이콘으로 열었을 때는 바로 앱으로 이동 */
+  var fromHome = /[?&]home=1/.test(location.search)
+    || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)
+    || window.navigator.standalone === true;
+  if (fromHome) location.replace(APP_URL);
+</script>
 <style>
-  html,body{margin:0;height:100%;background:#FFF0F6}
-  iframe{position:fixed;inset:0;width:100%;height:100%;border:0;display:block}
-  .wait{position:fixed;inset:0;display:grid;place-items:center;text-align:center;font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:#4A2A4A;padding:24px}
-  .wait img{width:96px;height:96px;border-radius:24px;box-shadow:0 8px 24px rgba(200,80,140,.25)}
-  .wait p{margin:16px 0 0;font-size:15px}
-  .wait a{display:inline-block;margin-top:18px;padding:12px 20px;border-radius:999px;background:#FF5FA2;color:#fff;text-decoration:none;font-weight:700}
-  .wait a[hidden]{display:none}
+  *{box-sizing:border-box}
+  html{background:#E3E8FF}
+  body{margin:0;min-height:100vh;background-attachment:fixed;background:linear-gradient(160deg,#FFE3EF,#F3E3FF 55%,#E3E8FF);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:#4A2A4A}
+  main{max-width:420px;margin:0 auto;padding:48px 20px 40px;text-align:center}
+  .icon{width:112px;height:112px;border-radius:28px;box-shadow:0 10px 30px rgba(200,80,140,.28)}
+  h1{font-size:24px;margin:18px 0 6px}
+  .sub{margin:0 0 26px;color:#8A6A86;font-size:15px}
+  .btn{display:block;width:100%;padding:16px;border-radius:18px;border:0;font:inherit;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer}
+  .go{background:#FF5FA2;color:#fff;box-shadow:0 8px 20px rgba(255,95,162,.35)}
+  .add{margin-top:12px;background:#fff;color:#FF5FA2;border:2px solid #FFC2DA}
+  .add[hidden]{display:none}
+  .card{margin-top:26px;background:rgba(255,255,255,.8);border-radius:20px;padding:18px 18px 8px;text-align:left;font-size:14.5px;line-height:1.6}
+  .card b{color:#FF5FA2}
+  .card h2{font-size:15px;margin:0 0 8px}
+  .card ol{margin:0 0 12px;padding-left:20px}
 </style>
 </head>
 <body>
-<div class="wait" id="wait">
-  <div>
-    <img src="icon-192.png" alt="">
-    <p>스터디 랩을 여는 중이에요…</p>
-    <a id="open" hidden>여기를 눌러 열기</a>
+<main>
+  <img class="icon" src="icon-192.png" alt="">
+  <h1>송현여고 스터디 랩</h1>
+  <p class="sub">홈 화면에 추가하고 앱처럼 써 보세요</p>
+  <a class="btn go" id="go">스터디 랩 열기</a>
+  <button class="btn add" id="add" hidden>📲 홈 화면에 추가하기</button>
+  <div class="card">
+    <h2>홈 화면에 추가하는 방법</h2>
+    <ol id="howA">
+      <li>크롬 오른쪽 위 <b>⋮</b> 누르기</li>
+      <li><b>홈 화면에 추가</b> (또는 <b>앱 설치</b>) 누르기</li>
+      <li><b>설치 / 추가</b> 누르면 끝!</li>
+    </ol>
+    <ol id="howI" hidden>
+      <li>사파리 아래쪽 <b>공유 버튼(□↑)</b> 누르기</li>
+      <li>아래로 내려 <b>홈 화면에 추가</b> 누르기</li>
+      <li>오른쪽 위 <b>추가</b> 누르면 끝!</li>
+    </ol>
+    <p style="margin:0 0 10px;color:#8A6A86;font-size:13px">카카오톡에서 열었다면 오른쪽 위 메뉴에서 <b>다른 브라우저로 열기</b>를 먼저 눌러 주세요.</p>
   </div>
-</div>
+</main>
 <script>
-  /* ▼▼ 여기에 웹앱 주소(/exec 로 끝나는 주소)를 넣어 주세요 ▼▼ */
-  var APP_URL = 'https://script.google.com/macros/s/AKfycby7Ir4X6zfTrlRDqdcWvwG1Z-0ZNLPhj0kf7uiWfgTnNoBZNU8DdWDhjmSBwrx0aoD2/exec';
-  /* ▲▲ ------------------------------------------------ ▲▲ */
-
-  var open = document.getElementById('open');
-  open.href = APP_URL;
-  var f = document.createElement('iframe');
-  f.src = APP_URL;
-  f.title = '송현여고 스터디 랩';
-  f.allow = 'clipboard-write; web-share; fullscreen; autoplay';
-  f.onload = function(){ document.getElementById('wait').style.display = 'none'; };
-  document.body.appendChild(f);
-  setTimeout(function(){ open.hidden = false; }, 6000);
+  document.getElementById('go').href = APP_URL;
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) { document.getElementById('howA').hidden = true; document.getElementById('howI').hidden = false; }
+  var deferred = null, add = document.getElementById('add');
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; add.hidden = false; });
+  add.addEventListener('click', function(){ if (!deferred) return; deferred.prompt(); deferred.userChoice.finally(function(){ deferred = null; add.hidden = true; }); });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 </script>
 </body>
