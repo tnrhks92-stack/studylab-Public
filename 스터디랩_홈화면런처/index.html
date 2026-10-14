@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>송현여고 스터디 랩</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="스터디 랩">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FF8FB8">
+<style>
+  html,body{margin:0;height:100%;background:#FFF0F6}
+  iframe{position:fixed;inset:0;width:100%;height:100%;border:0;display:block}
+  .wait{position:fixed;inset:0;display:grid;place-items:center;text-align:center;font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:#4A2A4A;padding:24px}
+  .wait img{width:96px;height:96px;border-radius:24px;box-shadow:0 8px 24px rgba(200,80,140,.25)}
+  .wait p{margin:16px 0 0;font-size:15px}
+  .wait a{display:inline-block;margin-top:18px;padding:12px 20px;border-radius:999px;background:#FF5FA2;color:#fff;text-decoration:none;font-weight:700}
+  .wait a[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="wait" id="wait">
+  <div>
+    <img src="icon-192.png" alt="">
+    <p>스터디 랩을 여는 중이에요…</p>
+    <a id="open" hidden>여기를 눌러 열기</a>
+  </div>
+</div>
+<script>
+  /* ▼▼ 여기에 웹앱 주소(/exec 로 끝나는 주소)를 넣어 주세요 ▼▼ */
+  var APP_URL = 'https://script.google.com/macros/s/여기에_배포_ID/exec';
+  /* ▲▲ ------------------------------------------------ ▲▲ */
+
+  var open = document.getElementById('open');
+  open.href = APP_URL;
+  var f = document.createElement('iframe');
+  f.src = APP_URL;
+  f.title = '송현여고 스터디 랩';
+  f.allow = 'clipboard-write; web-share; fullscreen; autoplay';
+  f.onload = function(){ document.getElementById('wait').style.display = 'none'; };
+  document.body.appendChild(f);
+  setTimeout(function(){ open.hidden = false; }, 6000);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>
