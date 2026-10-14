@@ -33,6 +33,12 @@
   .go{background:#FF5FA2;color:#fff;box-shadow:0 8px 20px rgba(255,95,162,.35)}
   .add{margin-top:12px;background:#fff;color:#FF5FA2;border:2px solid #FFC2DA}
   .add[hidden]{display:none}
+  .ext{margin:0 0 18px;background:#fff;border:2px solid #FFC2DA;border-radius:20px;padding:16px;text-align:center}
+  .ext[hidden],.ext .btn[hidden]{display:none}
+  .ext p{margin:0 0 12px;font-size:14.5px;line-height:1.55}
+  .ext p b{color:#FF5FA2}
+  .ext .btn{background:#4A2A4A;color:#fff}
+  .ext .btn + .btn{margin-top:8px;background:#fff;color:#4A2A4A;border:2px solid #E5D3E2}
   .card{margin-top:26px;background:rgba(255,255,255,.8);border-radius:20px;padding:18px 18px 8px;text-align:left;font-size:14.5px;line-height:1.6}
   .card b{color:#FF5FA2}
   .card h2{font-size:15px;margin:0 0 8px}
@@ -44,6 +50,11 @@
   <img class="icon" src="스터디랩_홈화면런처/icon-192.png" alt="">
   <h1>송현여고 스터디 랩</h1>
   <p class="sub">홈 화면에 추가하고 앱처럼 써 보세요</p>
+  <div class="ext" id="ext" hidden>
+    <p id="extMsg">지금은 다른 앱 안의 브라우저예요.<br>홈 화면에 추가하려면 <b id="extName">크롬</b>으로 열어 주세요.</p>
+    <a class="btn" id="extBtn">크롬으로 열기</a>
+    <a class="btn" id="extBtn2" hidden>사파리로 열기</a>
+  </div>
   <a class="btn go" id="go">스터디 랩 열기</a>
   <button class="btn add" id="add" hidden>📲 홈 화면에 추가하기</button>
   <div class="card">
@@ -63,6 +74,33 @@
 </main>
 <script>
   document.getElementById('go').href = APP_URL;
+
+  /* ── 크롬·사파리로 열기 ── */
+  (function(){
+    var ua = navigator.userAgent, here = location.href.split('#')[0];
+    var isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var isAndroid = /Android/i.test(ua);
+    var isKakao = /KAKAOTALK/i.test(ua);
+    var inApp = isKakao || /NAVER\(inapp|; ?Instagram|FBAN|FBAV|FB_IAB|Line\/|DaumApps|everytimeApp|BAND\/|; wv\)/i.test(ua);
+    var isSamsung = /SamsungBrowser/i.test(ua);
+    var isAndChrome = isAndroid && /Chrome\//.test(ua) && !inApp && !isSamsung && !/EdgA|OPR|Whale|Firefox/i.test(ua);
+    var isSafari = isIOS && /Safari\//.test(ua) && !inApp && !/CriOS|FxiOS|EdgiOS|Whale|NAVER/i.test(ua);
+    var box = document.getElementById('ext'), msg = document.getElementById('extMsg'), b1 = document.getElementById('extBtn'), b2 = document.getElementById('extBtn2');
+    var safariUrl = 'x-safari-' + here;
+    var chromeIntent = 'intent://' + here.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(here) + ';end';
+    var kakaoOut = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(here);
+    if (isAndroid && !isAndChrome) {
+      box.hidden = false;
+      msg.innerHTML = (inApp ? '지금은 다른 앱 안의 브라우저예요.' : '지금 브라우저에서는 홈 화면 추가가 잘 안 될 수 있어요.') + '<br>아래 버튼을 눌러 <b>크롬</b>으로 열어 주세요.';
+      b1.textContent = '크롬으로 열기'; b1.href = chromeIntent;
+      if (isKakao) { setTimeout(function(){ location.href = kakaoOut; }, 300); }
+    } else if (isIOS && !isSafari) {
+      box.hidden = false;
+      msg.innerHTML = (inApp ? '지금은 다른 앱 안의 브라우저예요.' : '아이폰은 사파리에서 추가해야 아이콘이 예쁘게 들어가요.') + '<br>아래 버튼을 눌러 <b>사파리</b>로 열어 주세요.';
+      b1.textContent = '사파리로 열기'; b1.href = isKakao ? kakaoOut : safariUrl;
+      if (isKakao) { b2.hidden = false; b2.href = safariUrl; b2.textContent = '그래도 안 열리면 여기'; setTimeout(function(){ location.href = kakaoOut; }, 300); }
+    }
+  })();
   if (/iPhone|iPad|iPod/.test(navigator.userAgent)) { document.getElementById('howA').hidden = true; document.getElementById('howI').hidden = false; }
   var deferred = null, add = document.getElementById('add');
   window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; add.hidden = false; });
