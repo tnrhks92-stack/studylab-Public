@@ -36,6 +36,8 @@
   .loading{position:fixed;inset:0;z-index:2;display:none;place-items:center;text-align:center;background:linear-gradient(160deg,#FFE3EF,#F3E3FF 55%,#E3E8FF)}
   .loading img{width:96px;height:96px;border-radius:24px;box-shadow:0 8px 24px rgba(200,80,140,.25)}
   .loading p{margin:14px 0 0;font-size:15px;color:#8A6A86}
+  .slow{margin-top:18px;display:grid;gap:10px;justify-items:center}.slow p{margin:0}.slow button,.slow a{border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:700;background:#FF5FA2;color:#fff;text-decoration:none}.slow a{background:#fff;color:#8A6A86}.slow small{color:#8A6A86;font-size:12px}
+  .slow[hidden]{display:none}
   .embed main{display:none}
   .embed .loading{display:grid}
   .iosg{position:fixed;inset:0;z-index:5;background:rgba(40,20,40,.55);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:16px 16px 70px}
@@ -60,7 +62,7 @@
 </style>
 </head>
 <body>
-<div class="loading" id="loading"><div><img src="icon-192.png" alt=""><p>스터디 랩을 여는 중이에요…</p></div></div>
+<div class="loading" id="loading"><div><img src="icon-192.png" alt=""><p>스터디 랩을 여는 중이에요…</p><div class="slow" id="slow" hidden><p>조금 오래 걸리고 있어요.</p><button type="button" onclick="location.href=location.pathname+'?home=1'">다시 시도</button><a id="slowGo" target="_top">그래도 안 되면 바로 열기</a><small>바로 열기를 누르면 위에 구글 안내 문구가 보여요.</small></div></div></div>
 <div class="iosg" id="iosGuide" hidden role="dialog" aria-label="홈 화면에 추가하는 방법">
   <div class="iosg-card">
     <h2>아이폰 홈 화면에 추가하기</h2>
@@ -94,6 +96,7 @@
 </main>
 <script>
   document.getElementById('go').href = APP_URL;
+  document.getElementById('slowGo').href = APP_URL;
 
   /* ── 앱을 이 페이지 안에 띄우기 (구글 안내 띠가 보이지 않음). 막히면 앱 주소로 바로 이동 ── */
   function openEmbedded(){
@@ -105,7 +108,7 @@
       if (!e.data || !/\.googleusercontent\.com$/.test(e.origin)) return;
       var k = e.data.studylab;
       if (k === 'ready') {
-        if (!ok) { ok = true; document.getElementById('loading').style.display = 'none'; }
+        if (!ok) { ok = true; document.getElementById('loading').style.display = 'none'; document.getElementById('slow').hidden = true; }
         var me = null; try { me = JSON.parse(localStorage.getItem('sl_me') || 'null'); } catch(x){}
         try { e.source.postMessage({studylab: 'creds', me: me}, e.origin); } catch(x){}
       }
@@ -114,7 +117,8 @@
       if (k === 'clear') { try { localStorage.removeItem('sl_me'); } catch(x){} }
     });
     document.body.appendChild(f);
-    setTimeout(function(){ if (!ok) location.replace(APP_URL); }, 9000);
+    /* 아이폰은 처음 열 때 오래 걸릴 수 있어서, 구글 주소로 넘기지 않고 계속 기다림 (넘기면 구글 안내 문구가 보임) */
+    setTimeout(function(){ if (!ok) document.getElementById('slow').hidden = false; }, 12000);
   }
   document.getElementById('go').addEventListener('click', function(e){ e.preventDefault(); openEmbedded(); });
   if (fromHome) openEmbedded();
