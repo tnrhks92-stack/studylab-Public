@@ -100,7 +100,7 @@
     document.documentElement.className = 'embed';
     var ok = false, f = document.createElement('iframe');
     f.className = 'frame'; f.src = APP_URL; f.title = '송현여고 스터디 랩';
-    f.allow = 'clipboard-write; web-share; fullscreen; autoplay; screen-wake-lock';
+    f.allow = 'clipboard-write; web-share; fullscreen; autoplay; screen-wake-lock; picture-in-picture';
     window.addEventListener('message', function(e){
       if (!e.data || !/\.googleusercontent\.com$/.test(e.origin)) return;
       var k = e.data.studylab;
