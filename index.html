@@ -121,12 +121,15 @@
       var k = e.data.studylab;
       if (k === 'ready') {
         if (!ok) { ok = true; document.getElementById('loading').style.display = 'none'; document.getElementById('slow').hidden = true; }
-        var me = null; try { me = JSON.parse(localStorage.getItem('sl_me') || 'null'); } catch(x){}
-        try { e.source.postMessage({studylab: 'creds', me: me}, e.origin); } catch(x){}
+        var me = null, tc = null; try { me = JSON.parse(localStorage.getItem('sl_me') || 'null'); tc = JSON.parse(localStorage.getItem('sl_teacher') || 'null'); } catch(x){}
+        try { e.source.postMessage({studylab: 'creds', me: me, teacher: tc}, e.origin); } catch(x){}
       }
       /* 자동 로그인 정보: 이 휴대폰에만 저장돼요 */
       if (k === 'save' && e.data.me) { try { localStorage.setItem('sl_me', JSON.stringify({no: String(e.data.me.no), pin: String(e.data.me.pin)})); } catch(x){} }
       if (k === 'clear') { try { localStorage.removeItem('sl_me'); } catch(x){} }
+      /* 선생님 자동 로그인 열쇠 (비밀번호가 아니라 서버가 준 열쇠만 저장) */
+      if (k === 'tsave' && e.data.teacher && /^tk_/.test(String(e.data.teacher.t))) { try { localStorage.setItem('sl_teacher', JSON.stringify({t: String(e.data.teacher.t), who: String(e.data.teacher.who || '')})); } catch(x){} }
+      if (k === 'tclear') { try { localStorage.removeItem('sl_teacher'); } catch(x){} }
     });
     document.body.appendChild(f);
     /* 아이폰은 처음 열 때 오래 걸릴 수 있어서, 구글 주소로 넘기지 않고 계속 기다림 (넘기면 구글 안내 문구가 보임) */
