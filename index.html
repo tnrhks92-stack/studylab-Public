@@ -50,7 +50,10 @@
   .campanel.mini{width:116px;cursor:grab}
   .cp-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px 6px 12px;background:#1d1d22;color:#fff;cursor:grab;font-size:13px}
   .cp-bar b{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cp-size{border:0;border-radius:999px;background:rgba(255,255,255,.16);color:#fff;font:inherit;font-size:12px;padding:5px 12px;cursor:pointer}
+  .cp-bar span{display:flex;gap:6px;flex:none}
+  .cp-dock[hidden]{display:none}
+  .campanel.docked{border-width:0;border-radius:14px;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+  .cp-dock,.cp-size{border:0;border-radius:999px;background:rgba(255,255,255,.16);color:#fff;font:inherit;font-size:12px;padding:5px 12px;cursor:pointer}
   .cp-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:#000}
   .cp-grid.n1{grid-template-columns:1fr}
   .campanel.big .cp-grid.n5,.campanel.big .cp-grid.n6{grid-template-columns:1fr 1fr 1fr}
@@ -140,11 +143,13 @@
    * 영상은 서버를 거치지 않고 친구 휴대폰과 바로 주고받아요(저장되지 않음). 소리는 보내지 않아요.
    * 서버는 처음 연결할 때 '연결하자'는 쪽지만 전해 줘요. 연결이 안 되는 친구는 앱에서 30초마다 사진으로 보여요.
    * 영상 창은 손가락으로 끌어 옮길 수 있고, [작게]를 누르면 작은 창이 돼요. */
-  var cam = { st: null, track: null, t: null, src: null, org: null, every: 5000, box: null, grid: null, mode: 'big', me: '', room: '', off: 0, list: [], pcs: {}, tick: null, shot: null };
+  var cam = { st: null, track: null, t: null, src: null, org: null, every: 5000, box: null, grid: null, mode: 'big', me: '', room: '', off: 0, list: [], pcs: {}, tick: null, shot: null, dock: null };
   var RTC_CFG = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] };
   function camSend(m){ try { if (cam.src) cam.src.postMessage(m, cam.org); } catch(x){} }
   function camShot(){
-    var v = cam.shot; if (!v || !v.videoWidth) return;
+    var v = cam.grid && cam.grid.querySelector('[data-id="me"] video');
+    if (!v || !v.videoWidth) v = cam.shot;
+    if (!v || !v.videoWidth) return;
     var w = 240, h = Math.round(240 * v.videoHeight / v.videoWidth) || 180, c = document.createElement('canvas'); c.width = w; c.height = h;
     var g = c.getContext('2d'); g.translate(w, 0); g.scale(-1, 1); g.drawImage(v, 0, 0, w, h);
     camSend({studylab: 'camframe', jpg: c.toDataURL('image/jpeg', 0.6), t: Date.now()});
@@ -157,9 +162,10 @@
   function camBox(){
     if (cam.box) return cam.box;
     var b = document.createElement('div'); b.className = 'campanel big';
-    b.innerHTML = '<div class="cp-bar"><b class="cp-title">📹 캠스터디</b><button type="button" class="cp-size">작게</button></div><div class="cp-grid"></div>';
+    b.innerHTML = '<div class="cp-bar"><b class="cp-title">📹 캠스터디</b><span><button type="button" class="cp-dock" hidden>제자리</button><button type="button" class="cp-size">작게</button></span></div><div class="cp-grid"></div>';
     document.body.appendChild(b); cam.box = b; cam.grid = b.querySelector('.cp-grid');
     b.querySelector('.cp-size').addEventListener('click', function(e){ e.stopPropagation(); camMode(cam.mode === 'big' ? 'mini' : 'big'); });
+    b.querySelector('.cp-dock').addEventListener('click', function(e){ e.stopPropagation(); try { localStorage.removeItem('sl_campos_big'); } catch(x){} camLayout(); });
     camDrag(b); camMode(lsGet('sl_cammode') || 'big', true);
     if (!cam.tick) cam.tick = setInterval(camLabels, 1000);
     return b;
@@ -169,8 +175,25 @@
     var b = cam.box; if (!b) return;
     b.classList.toggle('big', cam.mode === 'big'); b.classList.toggle('mini', cam.mode === 'mini');
     b.querySelector('.cp-size').textContent = cam.mode === 'big' ? '작게' : '크게';
-    camPlace(lsGet('sl_campos_' + cam.mode));
+    camLayout();
   }
+  /* 큰 창은 앱 안의 '영상 자리'에 붙어서 함께 움직임 (스크롤하면 위쪽 막대 아래에 붙어 있음)
+   * 손가락으로 끌어 다른 곳에 두면 그 자리에 머물고, [제자리]를 누르면 다시 앱 안에 붙음 */
+  function camDocked(){ return cam.mode === 'big' && !!cam.dock && !lsGet('sl_campos_big'); }
+  function camLayout(){
+    var b = cam.box; if (!b) return;
+    var docked = camDocked();
+    b.classList.toggle('docked', docked);
+    b.querySelector('.cp-dock').hidden = !(cam.mode === 'big' && cam.dock && !docked);
+    if (docked) {
+      var f = document.querySelector('iframe.frame'), fr = f ? f.getBoundingClientRect() : {left: 0, top: 0}, d = cam.dock;
+      b.style.width = Math.max(200, d.width) + 'px';
+      b.style.left = (fr.left + d.left) + 'px';
+      b.style.top = Math.max(fr.top + (d.minTop || 0), fr.top + d.top) + 'px';
+    } else { b.style.width = ''; camPlace(lsGet('sl_campos_' + cam.mode)); }
+    camReport();
+  }
+  function camReport(){ var b = cam.box; if (!b) return; camSend({studylab: 'campanel', h: b.offsetHeight, mode: cam.mode, docked: camDocked()}); }
   /* 화면 밖으로 나가지 않게 위치를 맞춤 (위치는 이 휴대폰에 기억) */
   function camPlace(p){
     var b = cam.box; if (!b) return;
@@ -183,7 +206,7 @@
   function camDrag(b){
     var sx = 0, sy = 0, ox = 0, oy = 0, on = false, moved = false, pid = null;
     b.addEventListener('pointerdown', function(e){
-      if (e.target.closest('.cp-size')) return;
+      if (e.target.closest('button')) return;
       if (cam.mode === 'big' && !e.target.closest('.cp-bar')) return;   // 큰 창은 위쪽 막대를 잡고 옮김
       on = true; moved = false; pid = e.pointerId; sx = e.clientX; sy = e.clientY; ox = b.offsetLeft; oy = b.offsetTop;
       try { b.setPointerCapture(pid); } catch(x){}
@@ -199,11 +222,11 @@
     });
     function up(e){
       if (!on || e.pointerId !== pid) return; on = false;
-      if (moved) lsSet('sl_campos_' + cam.mode, {x: b.offsetLeft / window.innerWidth, y: b.offsetTop / window.innerHeight});
+      if (moved) { lsSet('sl_campos_' + cam.mode, {x: b.offsetLeft / window.innerWidth, y: b.offsetTop / window.innerHeight}); camLayout(); }
       else if (cam.mode === 'mini') camMode('big');   // 작은 창을 톡 누르면 크게
     }
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
-    window.addEventListener('resize', function(){ if (cam.box) camPlace(lsGet('sl_campos_' + cam.mode)); });
+    window.addEventListener('resize', function(){ if (cam.box) camLayout(); });
   }
   /* 칸 그리기: 나 + 방 친구들 */
   function camTiles(){
@@ -225,16 +248,17 @@
     Array.prototype.slice.call(g.children).forEach(function(t){ if (!keep[t.getAttribute('data-id')]) g.removeChild(t); });
     b.querySelector('.cp-title').textContent = '📹 캠스터디 · ' + L.length + '명';
     g.className = 'cp-grid n' + Math.min(6, L.length);
-    camLabels(); camPlace(lsGet('sl_campos_' + cam.mode));
+    camLabels(); camLayout();
   }
   function camLabels(){
     if (!cam.grid) return;
     cam.list.forEach(function(m){
       var t = cam.grid.querySelector('[data-id="' + (m.me ? 'me' : m.id) + '"]'); if (!t) return;
-      var live = m.me ? !!cam.st : !!(cam.pcs[m.id] && cam.pcs[m.id].on && m.cam);
+      var p = !m.me && cam.pcs[m.id], tk = p && p.stream && p.stream.getVideoTracks()[0], vv = t.querySelector('video');
+      var live = m.me ? !!cam.st : !!(p && p.on && tk && tk.readyState === 'live' && !tk.muted && vv && vv.videoWidth > 0);
       t.classList.toggle('off', !live);
       var ph = t.querySelector('.ct-ph');
-      ph.textContent = m.me ? (cam.st ? '' : '카메라 꺼짐') : (!m.cam ? '카메라 꺼짐' : cam.pcs[m.id] && cam.pcs[m.id].fail ? '영상 연결 안 됨\n(앱에서 사진으로 보여요)' : '연결하는 중…');
+      ph.textContent = m.me ? (cam.st ? '' : '카메라 꺼짐') : (p && p.fail ? '영상 연결 안 됨\n(앱에서 사진으로 보여요)' : p && p.on ? '카메라 꺼짐' : '연결하는 중…');
       var sec = m.start ? ((m.paused ? m.paused : Date.now() + cam.off) - m.start) / 1000 : 0;
       t.querySelector('.ct-l em').textContent = m.start ? (m.subj || '') + ' ' + hms(sec) + (m.paused ? ' 쉬는 중' : '') : '시작 전';
     });
@@ -242,7 +266,8 @@
   /* 카메라 켜기·끄기 */
   function camStop(){
     if (cam.t) clearInterval(cam.t); cam.t = null;
-    if (cam.st) cam.st.getTracks().forEach(function(k){ k.stop(); }); cam.st = null; cam.track = null; cam.shot = null;
+    if (cam.st) cam.st.getTracks().forEach(function(k){ k.stop(); }); cam.st = null; cam.track = null;
+    if (cam.shot && cam.shot.parentNode) cam.shot.parentNode.removeChild(cam.shot); cam.shot = null;
     Object.keys(cam.pcs).forEach(function(id){ var p = cam.pcs[id]; if (p.tr) { try { p.tr.sender.replaceTrack(null); } catch(x){} } });
     if (cam.grid) { var v = cam.grid.querySelector('[data-id="me"] video'); if (v) v.srcObject = null; camLabels(); }
   }
@@ -257,15 +282,33 @@
     if (cam.st && cam.st.getVideoTracks().some(function(k){ return k.readyState === 'live'; })) { camBox(); camSend({studylab: 'camok'}); camShot(); return; }
     if (cam.st) camStop();
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camSend({studylab: 'camerr', msg: 'nosupport'}); return; }
-    navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 320}, height: {ideal: 240}, frameRate: {ideal: 12, max: 15}}, audio: false}).then(function(st){
+    var tries = [
+      {video: {facingMode: 'user', width: {ideal: 320}, height: {ideal: 240}}, audio: false},
+      {video: {facingMode: 'user'}, audio: false},
+      {video: true, audio: false}
+    ];
+    var go = function(i){
+      return navigator.mediaDevices.getUserMedia(tries[i]).catch(function(e){
+        if (i + 1 < tries.length && e && e.name !== 'NotAllowedError' && e.name !== 'SecurityError') return go(i + 1);
+        throw e;
+      });
+    };
+    go(0).then(function(st){
       cam.st = st; cam.track = st.getVideoTracks()[0];
-      var v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', ''); v.srcObject = st; try { v.play(); } catch(x){}
-      cam.shot = v;
-      camTiles();
-      var mv = cam.grid.querySelector('[data-id="me"] video'); if (mv) { mv.srcObject = st; try { mv.play(); } catch(x){} }
+      try { if (cam.track && cam.track.applyConstraints) cam.track.applyConstraints({frameRate: {max: 15}}).catch(function(){}); } catch(x){}
       Object.keys(cam.pcs).forEach(function(id){ var p = cam.pcs[id]; if (p.tr) { try { p.tr.sender.replaceTrack(cam.track); } catch(x){} } });
-      cam.t = setInterval(camShot, cam.every); setTimeout(camShot, 1200);
       camSend({studylab: 'camok'});
+      try {
+        // 사진용 영상도 화면에 붙여 둠 (아이폰은 화면에 없는 영상은 그리지 않음)
+        var v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', ''); v.srcObject = st;
+        v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1';
+        document.body.appendChild(v); try { var pp = v.play(); if (pp && pp.catch) pp.catch(function(){}); } catch(x){}
+        if (cam.shot && cam.shot.parentNode) cam.shot.parentNode.removeChild(cam.shot);
+        cam.shot = v;
+        camTiles();
+        var mv = cam.grid.querySelector('[data-id="me"] video'); if (mv) { mv.srcObject = st; try { var mp = mv.play(); if (mp && mp.catch) mp.catch(function(){}); } catch(x){} }
+      } catch(x){}
+      cam.t = setInterval(camShot, cam.every); setTimeout(camShot, 1500);
     }).catch(function(e){ camSend({studylab: 'camerr', msg: e && e.name || 'error'}); });
   }
   /* 실시간 연결: 아이디가 작은 쪽이 먼저 '연결하자'를 보냄 (서로 동시에 보내 꼬이지 않게) */
@@ -358,6 +401,7 @@
       camTiles(); rtcPeers();
     }
     else if (c === 'sig' && d.from) rtcSig(String(d.from), d.d);
+    else if (c === 'dock') { cam.dock = d.off ? null : {top: Number(d.top) || 0, left: Number(d.left) || 0, width: Number(d.width) || 0, minTop: Number(d.minTop) || 0}; if (cam.box) camLayout(); }
   }
   document.addEventListener('visibilitychange', function(){ if (document.hidden && cam.st) camSend({studylab: 'camhidden'}); });
   function openEmbedded(){
