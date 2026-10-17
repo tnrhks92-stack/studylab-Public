@@ -59,7 +59,8 @@
   .ct-l{position:absolute;left:0;right:0;bottom:0;padding:14px 6px 4px;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-size:11px;display:flex;justify-content:space-between;gap:4px}
   .ct-l b,.ct-l em{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:normal}
   .ct-l em{font-variant-numeric:tabular-nums}
-  .ct-st{display:none}
+  .ct-st{display:none;position:absolute;left:6px;top:6px;font-style:normal;font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff}
+  .ct.lag .ct-st{display:block}
   .campanel.mini .cp-bar{padding:3px 6px;font-size:10px}
   .campanel.mini .cp-size{display:none}
   .campanel.mini .ct:not(.me){display:none}
@@ -225,7 +226,7 @@
       var t = g.querySelector('[data-id="' + id + '"]');
       if (!t) {
         t = document.createElement('div'); t.className = 'ct' + (m.me ? ' me' : ''); t.setAttribute('data-id', id);
-        t.innerHTML = '<video muted autoplay playsinline></video><i class="ct-ph"></i><span class="ct-l"><b></b><em></em></span><i class="ct-st"></i>';
+        t.innerHTML = '<video muted autoplay playsinline></video><i class="ct-ph"></i><span class="ct-l"><b></b><em></em></span><i class="ct-st">잠시 멈춤</i>';
         if (m.me) g.insertBefore(t, g.firstChild); else g.appendChild(t);
         var v = t.querySelector('video'); v.muted = true; v.setAttribute('playsinline', '');
         if (m.me && cam.st) { v.srcObject = cam.st; try { v.play(); } catch(x){} }
@@ -237,14 +238,21 @@
     b.querySelector('.cp-title').textContent = '📹 캠스터디 · ' + L.length + '명';
     g.className = 'cp-grid n' + Math.min(6, L.length);
     camLabels(); camLayout();
+    Object.keys(cam.pcs).forEach(function(id){ if (cam.pcs[id].on) rtcLimit(cam.pcs[id]); });
   }
   function camLabels(){
     if (!cam.grid) return;
     cam.list.forEach(function(m){
       var t = cam.grid.querySelector('[data-id="' + (m.me ? 'me' : m.id) + '"]'); if (!t) return;
-      var p = !m.me && cam.pcs[m.id], tk = p && p.stream && p.stream.getVideoTracks()[0], vv = t.querySelector('video');
-      var live = m.me ? !!cam.st : !!(p && p.on && tk && tk.readyState === 'live' && !tk.muted && vv && vv.videoWidth > 0);
-      t.classList.toggle('off', !live);
+      var p = !m.me && cam.pcs[m.id], tk = p && p.stream && p.stream.getVideoTracks()[0], vv = t.querySelector('video'), now = Date.now();
+      if (vv && vv.srcObject && vv.paused) { try { var pr = vv.play(); if (pr && pr.catch) pr.catch(function(){}); } catch(x){} }   // 휴대폰이 멈춰 버린 영상은 다시 재생
+      var ok = m.me ? !!cam.st : !!(p && p.on && tk && tk.readyState === 'live' && !tk.muted && vv && vv.videoWidth > 0);
+      if (ok) { t._bad = 0; if (vv && vv.videoWidth) t._seen = true; } else if (!t._bad) t._bad = now;
+      var bad = ok ? 0 : now - t._bad;
+      // 잠깐(4초 안) 끊긴 건 무시 · 4~15초는 마지막 화면 위에 작은 표시 · 15초 넘으면 가림
+      var cover = m.me ? !cam.st : !(ok || (t._seen && bad < 15000));
+      t.classList.toggle('off', cover);
+      t.classList.toggle('lag', !m.me && !ok && !cover && bad > 4000);
       var ph = t.querySelector('.ct-ph');
       ph.textContent = m.me ? (cam.st ? '' : '카메라 꺼짐') : (p && p.fail ? '영상 연결 안 됨\n(앱에서 사진으로 보여요)' : p && p.on ? '카메라 꺼짐' : '연결하는 중…');
       var sec = m.start ? ((m.paused ? m.paused : Date.now() + cam.off) - m.start) / 1000 : 0;
@@ -313,6 +321,7 @@
       var s = pc.connectionState;
       if (s === 'connected') { p.on = true; p.fail = false; rtcLimit(p); }
       if (s === 'failed' || s === 'closed') { p.on = false; p.fail = s === 'failed'; }
+      if (s === 'failed') rtcAgain(id, p);
       if (s === 'disconnected') p.on = false;
       rtcState(id, s); camLabels();
     };
@@ -320,7 +329,16 @@
   }
   /* 데이터를 아끼려고 영상 품질을 낮게 (작은 화면용) */
   function rtcLimit(p){
-    try { var s = p.tr && p.tr.sender; if (!s || !s.getParameters) return; var q = s.getParameters(); if (!q.encodings || !q.encodings.length) q.encodings = [{}]; q.encodings[0].maxBitrate = 90000; q.encodings[0].maxFramerate = 10; var r = s.setParameters(q); if (r && r.catch) r.catch(function(){}); } catch(x){}
+    try {
+      var s = p.tr && p.tr.sender; if (!s || !s.getParameters) return;
+      var q = s.getParameters(); if (!q.encodings || !q.encodings.length) q.encodings = [{}];
+      var n = Math.max(1, cam.list.length - 1), set = cam.track && cam.track.getSettings ? cam.track.getSettings() : {}, w = set.width || 320;
+      q.encodings[0].maxBitrate = n <= 1 ? 220000 : n <= 3 ? 160000 : 110000;   // 친구가 많을수록 한 명에게 보내는 양을 줄임
+      q.encodings[0].maxFramerate = 12;
+      q.encodings[0].scaleResolutionDownBy = Math.max(1, w / 320);                // 보내는 영상은 가로 320 정도로
+      try { q.degradationPreference = 'maintain-framerate'; } catch(x){}          // 화질을 조금 낮추더라도 멈추지 않게
+      var r = s.setParameters(q); if (r && r.catch) r.catch(function(){});
+    } catch(x){}
   }
   function rtcGathered(pc){
     return new Promise(function(res){
@@ -340,7 +358,9 @@
     }).catch(function(){ p.fail = true; rtcState(id, 'failed'); });
   }
   function rtcSig(from, d){
-    if (!d || !d.sdp || !cam.room) return;
+    if (!d || !cam.room) return;
+    if (d.t === 'again') { var q0 = cam.pcs[from], myIdx = -1, hisIdx = -1; cam.list.forEach(function(m, i){ if (m.me) myIdx = i; if (m.id === from) hisIdx = i; }); if ((q0 && q0.offerer) || (hisIdx >= 0 && hisIdx < myIdx)) { var k = q0 ? q0.tries : 0; rtcOffer(from); if (cam.pcs[from]) cam.pcs[from].tries = Math.min(k, 1); } return; }
+    if (!d.sdp) return;
     if (d.t === 'offer') {
       var p = rtcNew(from);
       p.pc.setRemoteDescription({type: 'offer', sdp: d.sdp}).then(function(){
@@ -365,6 +385,30 @@
     Object.keys(cam.pcs).forEach(function(id){ if (!(id in ids) && (cam.pcs[id].on || Date.now() - cam.pcs[id].at > 15000)) rtcClose(id); });
     Object.keys(ids).forEach(function(id){ if (!cam.pcs[id] && myIdx >= 0 && ids[id] < myIdx) rtcOffer(id); });
   }
+  /* 다시 연결: 먼저 연결을 건 쪽이 다시 걸고, 받은 쪽은 '다시 걸어 줘' 쪽지를 보냄 (1시간에 6번까지) */
+  var again = {};
+  function rtcAgain(id, p){
+    var a = again[id] || (again[id] = []), now = Date.now();
+    while (a.length && now - a[0] > 3600000) a.shift();
+    if (a.length >= 6 || (a.length && now - a[a.length - 1] < 8000)) return;
+    a.push(now);
+    if (p && p.offerer) { var keep = p.tries; rtcOffer(id); if (cam.pcs[id]) cam.pcs[id].tries = Math.min(keep, 1); }
+    else camSend({studylab: 'rtcsig', to: id, d: {t: 'again'}});
+  }
+  /* 영상이 12초 넘게 한 장도 안 바뀌면(친구 카메라는 켜져 있는데) 멈춘 것으로 보고 다시 연결 */
+  setInterval(function(){
+    if (!cam.room || document.hidden) return;
+    Object.keys(cam.pcs).forEach(function(id){
+      var p = cam.pcs[id]; if (!p.on || !p.pc.getStats) return;
+      var tk = p.stream && p.stream.getVideoTracks()[0]; if (!tk || tk.muted) { p.fd = -1; return; }
+      p.pc.getStats().then(function(r){
+        var fd = -1; r.forEach(function(x){ if (x.type === 'inbound-rtp' && (x.kind === 'video' || x.mediaType === 'video')) fd = Math.max(fd, x.framesDecoded || x.framesReceived || 0); });
+        if (fd < 0) return;
+        if (fd !== p.fd) { p.fd = fd; p.fdAt = Date.now(); return; }
+        if (p.fdAt && Date.now() - p.fdAt > 12000) { p.fdAt = Date.now(); rtcAgain(id, p); }
+      }).catch(function(){});
+    });
+  }, 4000);
   /* 연결이 안 되면 다시 시도 (최대 3번), 그래도 안 되면 사진으로 */
   setInterval(function(){
     if (!cam.room) return;
@@ -391,7 +435,10 @@
     else if (c === 'sig' && d.from) rtcSig(String(d.from), d.d);
     else if (c === 'dock') { cam.dock = d.off ? null : {top: Number(d.top) || 0, left: Number(d.left) || 0, width: Number(d.width) || 0, minTop: Number(d.minTop) || 0}; if (cam.box) camLayout(); }
   }
-  document.addEventListener('visibilitychange', function(){ if (document.hidden && cam.st) camSend({studylab: 'camhidden'}); });
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) { if (cam.st) camSend({studylab: 'camhidden'}); return; }
+    if (cam.grid) Array.prototype.forEach.call(cam.grid.querySelectorAll('video'), function(v){ if (v.srcObject) { try { var p = v.play(); if (p && p.catch) p.catch(function(){}); } catch(x){} } });
+  });
   function openEmbedded(){
     document.documentElement.className = 'embed';
     var ok = false, f = document.createElement('iframe');
