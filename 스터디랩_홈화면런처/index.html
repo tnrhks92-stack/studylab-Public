@@ -38,6 +38,11 @@
   .loading p{margin:14px 0 0;font-size:15px;color:#8A6A86}
   .slow{margin-top:18px;display:grid;gap:10px;justify-items:center}.slow p{margin:0}.slow button,.slow a{border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:700;background:#FF5FA2;color:#fff;text-decoration:none}.slow a{background:#fff;color:#8A6A86}.slow small{color:#8A6A86;font-size:12px}
   .slow[hidden]{display:none}
+  .cambox{position:fixed;left:10px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:4;width:112px;border-radius:14px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.25);background:#000;cursor:pointer;border:2px solid #fff}
+  .cambox video{display:block;width:100%;transform:scaleX(-1)}
+  .cambox span{position:absolute;left:6px;top:4px;font-size:10px;color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .cambox.mini{width:46px}
+  .cambox.mini span{display:none}
   .embed main{display:none}
   .embed .loading{display:grid}
   .iosg{position:fixed;inset:0;z-index:5;background:rgba(40,20,40,.55);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:16px 16px 70px}
@@ -99,6 +104,39 @@
   document.getElementById('slowGo').href = APP_URL;
 
   /* ── 앱을 이 페이지 안에 띄우기 (구글 안내 띠가 보이지 않음). 막히면 앱 주소로 바로 이동 ── */
+
+  /* ── 캠스터디 카메라 (구글 앱 화면 안에서는 카메라가 막혀 있어서, 이 런처가 대신 켜고 사진만 앱에 넘겨줌) ──
+   * 사진은 앱으로만 전달되고 이 페이지에는 저장하지 않아요. 앱에서 '끄기'를 누르거나 방을 나가면 카메라가 바로 꺼져요. */
+  var cam = { st: null, v: null, box: null, t: null, src: null, org: null, every: 5000 };
+  function camSend(m){ try { if (cam.src) cam.src.postMessage(m, cam.org); } catch(x){} }
+  function camShot(){
+    if (!cam.v || !cam.v.videoWidth) return;
+    var w = 240, h = Math.round(240 * cam.v.videoHeight / cam.v.videoWidth) || 180, c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d'); g.translate(w, 0); g.scale(-1, 1); g.drawImage(cam.v, 0, 0, w, h);
+    camSend({studylab: 'camframe', jpg: c.toDataURL('image/jpeg', 0.6), t: Date.now()});
+  }
+  function camStop(){
+    if (cam.t) clearInterval(cam.t); cam.t = null;
+    if (cam.st) cam.st.getTracks().forEach(function(k){ k.stop(); }); cam.st = null;
+    if (cam.box && cam.box.parentNode) cam.box.parentNode.removeChild(cam.box); cam.box = null; cam.v = null;
+  }
+  function camStart(){
+    if (cam.st && cam.st.getVideoTracks().some(function(k){ return k.readyState === 'live'; })) { if (cam.box) cam.box.style.display = ''; camSend({studylab: 'camok'}); camShot(); return; }
+    if (cam.st) camStop();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camSend({studylab: 'camerr', msg: 'nosupport'}); return; }
+    navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 320}, height: {ideal: 240}}, audio: false}).then(function(st){
+      cam.st = st;
+      var b = document.createElement('div'); b.className = 'cambox'; b.title = '내 카메라 (누르면 작게/크게)';
+      var v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', ''); v.srcObject = st;
+      var l = document.createElement('span'); l.textContent = '● 내 카메라';
+      b.appendChild(v); b.appendChild(l); b.addEventListener('click', function(){ b.classList.toggle('mini'); });
+      document.body.appendChild(b); cam.box = b; cam.v = v;
+      try { v.play(); } catch(x){}
+      cam.t = setInterval(camShot, cam.every); setTimeout(camShot, 1200);
+      camSend({studylab: 'camok'});
+    }).catch(function(e){ camSend({studylab: 'camerr', msg: e && e.name || 'error'}); });
+  }
+  document.addEventListener('visibilitychange', function(){ if (document.hidden && cam.st) camSend({studylab: 'camhidden'}); });
   function openEmbedded(){
     document.documentElement.className = 'embed';
     var ok = false, f = document.createElement('iframe');
@@ -118,6 +156,8 @@
       /* 선생님 자동 로그인 열쇠 (비밀번호가 아니라 서버가 준 열쇠만 저장) */
       if (k === 'tsave' && e.data.teacher && /^tk_/.test(String(e.data.teacher.t))) { try { localStorage.setItem('sl_teacher', JSON.stringify({t: String(e.data.teacher.t), who: String(e.data.teacher.who || '')})); } catch(x){} }
       if (k === 'tclear') { try { localStorage.removeItem('sl_teacher'); } catch(x){} }
+      /* 캠스터디 카메라 켜기·끄기 */
+      if (k === 'cam') { cam.src = e.source; cam.org = e.origin; if (e.data.cmd === 'start') camStart(); else if (e.data.cmd === 'stop') camStop(); else if (e.data.cmd === 'hide' && cam.box) cam.box.style.display = 'none'; else if (e.data.cmd === 'show' && cam.box) cam.box.style.display = ''; }
     });
     document.body.appendChild(f);
     /* 아이폰은 처음 열 때 오래 걸릴 수 있어서, 구글 주소로 넘기지 않고 계속 기다림 (넘기면 구글 안내 문구가 보임) */
