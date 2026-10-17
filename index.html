@@ -409,10 +409,27 @@
       b1.textContent = '크롬으로 열기'; b1.href = chromeIntent;
       if (isKakao) { setTimeout(function(){ location.href = kakaoOut; }, 300); }
     } else if (isIOS && !isSafari) {
+      // 'x-safari-' 주소로 사파리를 바로 여는 기능은 iOS 17부터만 돼요 → 그보다 낮으면 주소를 복사해서 사파리에 붙여 넣도록 안내
+      var iosVer = parseInt((ua.match(/OS (\d+)_/) || [])[1] || '0', 10);
+      var copyIt = function(e){
+        if (e) e.preventDefault();
+        var done = function(){ msg.innerHTML = '<b>주소를 복사했어요!</b><br>① 홈 화면에서 <b>사파리</b> 앱을 열고<br>② 맨 위(또는 아래) 주소창을 <b>길게 누른 뒤</b><br>③ <b>\'붙여넣기 및 이동\'</b>을 눌러 주세요.'; };
+        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(here).then(done, legacy); return; } } catch(x){}
+        legacy();
+        function legacy(){ try { var t = document.createElement('textarea'); t.value = here; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(t); t.select(); t.setSelectionRange(0, here.length); document.execCommand('copy'); document.body.removeChild(t); done(); } catch(x){ msg.innerHTML = '아래 주소를 길게 눌러 복사한 뒤 사파리 주소창에 붙여 넣어 주세요.<br><b style="word-break:break-all">' + here + '</b>'; } }
+      };
       box.hidden = false;
-      msg.innerHTML = (inApp ? '지금은 다른 앱 안의 브라우저예요.' : '아이폰은 사파리에서 추가해야 아이콘이 예쁘게 들어가요.') + '<br>아래 버튼을 눌러 <b>사파리</b>로 열어 주세요.';
-      b1.textContent = '사파리로 열기'; b1.href = isKakao ? kakaoOut : safariUrl;
-      if (isKakao) { b2.hidden = false; b2.href = safariUrl; b2.textContent = '그래도 안 열리면 여기'; setTimeout(function(){ location.href = kakaoOut; }, 300); }
+      msg.innerHTML = (inApp ? '지금은 다른 앱 안의 브라우저예요.' : '아이폰은 사파리에서 추가해야 홈 화면 아이콘이 생겨요.') + '<br><b>사파리</b>로 열어 주세요.';
+      if (isKakao) {
+        b1.textContent = '사파리로 열기'; b1.href = kakaoOut;
+        b2.hidden = false; b2.href = '#'; b2.textContent = '그래도 안 열리면: 주소 복사하기'; b2.addEventListener('click', copyIt);
+        setTimeout(function(){ location.href = kakaoOut; }, 300);
+      } else if (iosVer >= 17) {
+        b1.textContent = '사파리로 열기'; b1.href = safariUrl;
+        b2.hidden = false; b2.href = '#'; b2.textContent = '그래도 안 열리면: 주소 복사하기'; b2.addEventListener('click', copyIt);
+      } else {
+        b1.textContent = '📋 주소 복사하고 사파리에서 열기'; b1.href = '#'; b1.addEventListener('click', copyIt);
+      }
     }
   })();
   if (/iPhone|iPad|iPod/.test(navigator.userAgent)) { document.getElementById('howA').hidden = true; document.getElementById('howI').hidden = false; }
