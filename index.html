@@ -76,6 +76,18 @@
   .campanel.mini .ct-st{font-size:8px;padding:1px 5px}
   .cp-x{border:0;border-radius:999px;background:rgba(255,255,255,.16);color:#fff;font:inherit;font-size:14px;line-height:1;padding:5px 9px;cursor:pointer}
   .cp-pip[hidden]{display:none}
+  /* 태블릿(화면이 넓을 때): 영상 창을 화면 비율에 맞게 크게 */
+  @media (min-width:700px){
+    .campanel.big{width:min(88vw,980px)}
+    .campanel.mini{width:clamp(280px,36vw,420px)}
+    .cp-bar{font-size:15px;padding:8px 10px 8px 14px}
+    .ct-l{font-size:14px;padding:22px 10px 8px}
+    .ct-st{font-size:12px}
+    .campanel.mini .ct-l{font-size:11px;padding:10px 6px 4px}
+  }
+  @media (min-width:700px) and (orientation:landscape){
+    .campanel.big:not(.docked){width:min(72vw,1100px)}
+  }
   .embed main{display:none}
   .embed .loading{display:grid}
   .iosg{position:fixed;inset:0;z-index:5;background:rgba(40,20,40,.55);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:16px 16px 70px}
@@ -554,6 +566,10 @@
       if (k === 'tclear') { try { localStorage.removeItem('sl_teacher'); } catch(x){} }
       /* 캠스터디 카메라 켜기·끄기 */
       if (k === 'cam') camCmd(e);
+      /* 앱이 만든 파일(엑셀 등) 저장: 구글 화면 안에서는 다운로드가 막힐 수 있어서 런처가 대신 저장 */
+      if (k === 'download' && typeof e.data.data === 'string' && /^data:application\/vnd\.openxmlformats/.test(e.data.data)) {
+        try { var dl = document.createElement('a'); dl.href = e.data.data; dl.download = String(e.data.name || '파일.xlsx').replace(/[\\\/]/g, ' ').slice(0, 100); document.body.appendChild(dl); dl.click(); dl.parentNode.removeChild(dl); e.source.postMessage({studylab: 'dlok'}, e.origin); } catch(x){}
+      }
     });
     document.body.appendChild(f);
     /* 아이폰은 처음 열 때 오래 걸릴 수 있어서, 구글 주소로 넘기지 않고 계속 기다림 (넘기면 구글 안내 문구가 보임) */
